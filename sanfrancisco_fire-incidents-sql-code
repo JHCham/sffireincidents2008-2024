@@ -1,0 +1,245 @@
+#IncidentDay-------------------------------------------------------------------------------
+#Which day had the most fire incidents?
+
+SELECT IncidentDate,
+	DAYNAME(IncidentDate) AS IncidentDay
+FROM `san-francisco-fire-incidents`.san_francisco_fire_incidents;
+
+ALTER TABLE san_francisco_fire_incidents ADD COLUMN IncidentDay text AFTER IncidentDate;
+
+ALTER TABLE `san-francisco-fire-incidents`.san_francisco_fire_incidents
+Modify column IncidentDay varchar (10);
+
+UPDATE san_francisco_fire_incidents
+SET IncidentDay = DAYNAME(IncidentDate);
+
+SELECT
+	IncidentDay,
+    COUNT(IncidentDay) AS CountIncidentDay
+FROM san_francisco_fire_incidents
+GROUP BY IncidentDay
+ORDER BY CountIncidentDay DESC;
+
+#IncidentMonth----------------------------------------------------------
+#Which month had the most fire incidents? January
+SELECT 
+	IncidentDate,
+    MONTHNAME(IncidentDate) AS IncidentMonth
+From san_francisco_fire_incidents;
+
+ALTER TABLE san_francisco_fire_incidents ADD COLUMN IncidentMonth varchar (10) AFTER IncidentDay;
+
+UPDATE san_francisco_fire_incidents
+SET IncidentMonth = MONTHNAME(IncidentDate);
+
+SELECT
+	IncidentMonth,
+    COUNT(IncidentMonth) AS CountIncidentMonth
+FROM san_francisco_fire_incidents
+GROUP BY IncidentMonth
+ORDER BY CountIncidentMonth DESC;
+
+#Neighborhoods------------------------------
+#Which neighborhood had the most fire incidents? Tenderloin
+#Which neighborhood had the least fire incidents? Lincoln Park
+
+SELECT
+	NeighborhoodDistrict,
+    COUNT(NeighborhoodDistrict) AS CountNeighborhood
+FROM san_francisco_fire_incidents
+GROUP BY NeighborhoodDistrict
+ORDER BY CountNeighborhood DESC;
+
+#Fire Fighter Fatalities--------------------------------------------------------------------
+#How many fire fighter fatalities were there total?
+
+SELECT
+	FireFatalities,
+    COUNT(*) AS IncidentCount
+FROM san_francisco_fire_incidents
+GROUP BY FireFatalities
+ORDER BY IncidentCount DESC;
+
+#Fire Fighter Injuries--------------------------------------------------------------------------
+
+SELECT
+	FireInjuries,
+    COUNT(*) AS IncidentCount
+FROM san_francisco_fire_incidents
+GROUP BY FireInjuries
+ORDER BY IncidentCount DESC;
+
+#Civilian Fatalities-------------------------------------------------------------------
+
+SELECT
+	CivilianFatalities,
+    COUNT(*) AS IncidentCount
+FROM san_francisco_fire_incidents
+GROUP BY CivilianFatalities
+ORDER BY IncidentCount DESC;
+
+#Civilian Injuries---------------------------------------------------------------------
+
+SELECT
+	CivilianInjuries,
+    COUNT(*) AS IncidentCount
+FROM san_francisco_fire_incidents
+GROUP BY CivilianInjuries
+ORDER BY IncidentCount DESC;
+
+#Primary Situation and Incidents--------------------------------------------------------
+
+SELECT 
+    PrimarySituationValeusOnly AS PrimarySituation,
+    COUNT(*) AS IncidentCount
+FROM 
+    san_francisco_fire_incidents
+GROUP BY 
+    PrimarySituationValeusOnly
+ORDER BY 
+    IncidentCount DESC;
+    
+#Primary Situation and Action Taken-----------------------------------------------------
+
+SELECT 
+    ActionTakenPrimaryValuesOnly AS ActionTaken,
+    COUNT(*) AS IncidentCount
+FROM 
+    san_francisco_fire_incidents
+GROUP BY 
+    ActionTakenPrimaryValuesOnly
+ORDER BY 
+    IncidentCount DESC;
+    
+#Property Use and Types of Property-----------------------------------------------------------------
+
+SELECT 
+    PropertyUseValuesOnly AS PropertyUse,
+    COUNT(*) AS IncidentCount
+FROM 
+    san_francisco_fire_incidents
+GROUP BY 
+    PropertyUseValuesOnly
+ORDER BY 
+    IncidentCount DESC;
+    
+#Calculate Response Times
+
+SELECT 
+    IncidentNumber,
+    TIMESTAMPDIFF(MINUTE, AlarmTime, ArrivalTime) AS ResponseTimeMinutes
+FROM 
+    san_francisco_fire_incidents
+WHERE
+    ArrivalTime IS NOT NULL AND AlarmTime IS NOT NULL;
+    
+ALTER TABLE san_francisco_fire_incidents ADD COLUMN ResponseTimeMinutes INT AFTER ArrivalTime;
+
+UPDATE san_francisco_fire_incidents
+SET ResponseTimeMinutes = TIMESTAMPDIFF(MINUTE, CONCAT(AlarmDate, ' ', AlarmTime), CONCAT(ArrivalDate, ' ', ArrivalTime))
+WHERE ArrivalTime IS NOT NULL AND AlarmTime IS NOT NULL;
+    
+SELECT 
+    AVG(ResponseTimeMinutes) AS AverageResponseTime
+FROM 
+    (
+        SELECT 
+            TIMESTAMPDIFF(MINUTE, AlarmTime, ArrivalTime) AS ResponseTimeMinutes
+        FROM 
+            san_francisco_fire_incidents
+        WHERE
+            ArrivalTime IS NOT NULL AND AlarmTime IS NOT NULL
+    ) AS ResponseTimes;
+    
+#The below code did not factor in the fact that for some incidents, the Alarm Time was on one day (close to midnight) and the Arrtival Time was on another day. So the AlarmDate and ArrivalDate have to be included in the code to get accurate response times. See the next query statement. 
+/*SELECT 
+    YEAR(AlarmDate) AS Year,
+    AVG(TIMESTAMPDIFF(MINUTE, AlarmDate, AlarmTime, ArrivalDate, ArrivalTime)) AS AverageResponseTime
+FROM 
+    san_francisco_fire_incidents
+WHERE 
+    ArrivalTime IS NOT NULL AND AlarmTime IS NOT NULL
+GROUP BY 
+    YEAR(AlarmDate);*/
+    
+SELECT 
+    YEAR(AlarmDate) AS Year,
+    AVG(TIMESTAMPDIFF(MINUTE, CONCAT(AlarmDate, ' ', AlarmTime), CONCAT(ArrivalDate, ' ', ArrivalTime))) AS AverageResponseTime
+FROM 
+    san_francisco_fire_incidents
+WHERE 
+    ArrivalTime IS NOT NULL AND AlarmTime IS NOT NULL
+GROUP BY 
+    YEAR(AlarmDate);
+
+    
+SELECT 
+    IncidentNumber,
+    CASE 
+        WHEN ArrivalTime IS NOT NULL AND AlarmTime IS NOT NULL THEN TIMESTAMPDIFF(MINUTE, AlarmTime, ArrivalTime)
+        ELSE NULL
+    END AS ResponseTimeMinutes
+FROM 
+    san_francisco_fire_incidents;
+    
+SELECT 
+    IncidentNumber,
+    CASE 
+        WHEN ArrivalTime IS NOT NULL AND AlarmTime IS NOT NULL THEN TIMESTAMPDIFF(MINUTE, CONCAT(AlarmDate, ' ', AlarmTime), CONCAT(ArrivalDate, ' ', ArrivalTime))
+        ELSE NULL
+    END AS ResponseTimeMinutes
+FROM 
+    san_francisco_fire_incidents;
+
+
+# Trend Analysis by Year-----------------------------------------------------------------------
+
+SELECT
+	YEAR(IncidentDate) AS Year,
+	COUNT(*) AS IncidentCount
+FROM san_francisco_fire_incidents
+GROUP BY
+	YEAR(IncidentDate)
+ORDER BY
+	Year;
+    
+# Trend Analysis by Month---------------------------------------------------------------------------
+
+SELECT
+	YEAR(IncidentDate) AS Year,
+    MONTH(IncidentDate) AS Month,
+    COUNT(*) AS IncidentCount
+FROM
+	san_francisco_fire_incidents
+GROUP BY
+	YEAR(IncidentDate), MONTH(IncidentDate)
+ORDER BY
+	Year, Month;
+    
+# Seasonality Analysis---------------------------------------------------------------------------------
+SELECT 
+    MONTH(IncidentDate) AS Month,
+    COUNT(*) AS IncidentCount
+FROM 
+    san_francisco_fire_incidents
+GROUP BY 
+    MONTH(IncidentDate)
+ORDER BY 
+    Month;
+    
+# Correlation Between Response Time and Civilian Injuries ---------------------------------------------------
+
+CREATE FUNCTION NULLIFZERO(x INT) RETURNS INT
+    RETURN CASE WHEN x = 0 THEN NULL ELSE x END;
+
+
+SELECT 
+    (
+        SUM((TIMESTAMPDIFF(MINUTE, t.AlarmDate, t.ArrivalDate) - r.avg_response_time) * (t.CivilianInjuries - r.avg_civilian_injuries)) 
+        / 
+        NULLIFZERO(SQRT(SUM(POWER(TIMESTAMPDIFF(MINUTE, t.AlarmDate, t.ArrivalDate) - r.avg_response_time, 2)) * SUM(POWER(t.CivilianInjuries - r.avg_civilian_injuries, 2))))) AS Correlation
+FROM 
+    san_francisco_fire_incidents,
+    (SELECT AVG(TIMESTAMPDIFF(MINUTE, AlarmDate, ArrivalDate)) AS avg_response_time, AVG(CivilianInjuries) AS avg_civilian_injuries FROM san_francisco_fire_incidents WHERE ArrivalTime IS NOT NULL AND AlarmDate IS NOT NULL AND CivilianInjuries IS NOT NULL) r
+WHERE 
+    t.ArrivalDate IS NOT NULL AND t.AlarmDate IS NOT NULL AND t.CivilianInjuries IS NOT NULL;
